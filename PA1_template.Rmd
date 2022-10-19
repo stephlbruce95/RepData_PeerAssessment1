@@ -1,25 +1,132 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: "Project 1"
+author: "Stephanie Bruce"
+output:
   html_document:
-    keep_md: true
+    keep_md: yes
+  pdf_document: default
 ---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
+# Reproducible Research - Course Project 1 
 
-## Loading and preprocessing the data
+This R Markdown document include my code for Project 1.
 
+```{r read-data, echo=TRUE}
+library(readr)
+data <- read_csv("/home/rstudio/Reproducible_Research/week2/activity.csv")
+```
 
+## Part 1. What is mean total number of steps taken per day 
+```{r part1a, echo=TRUE}
+total_steps <- aggregate(x=data$steps, FUN=sum, by=list(Group.date = data$date), na.rm=TRUE)
+```
+The total number of steps taken per day is:  
+```{r part1a1, echo=TRUE}
+print(total_steps)
+```
 
-## What is mean total number of steps taken per day?
+```{r part1b, echo=TRUE}
+plot(total_steps$Group.date, total_steps$x, type = "h") 
+title(main = "Histogram of steps by Day")
+```
 
+The mean and median number of steps per day are: 
+```{r part1c, echo=TRUE}
+mean_steps <- mean(total_steps$x)
+median_steps <- median(total_steps$x)
+print(mean_steps)
+print(median_steps)
+```
 
+## Part 2. What is the average daily activity pattern 
+```{r part2, echo=TRUE}
+interval_totals <- aggregate(x=data$steps, FUN=sum, by=list(group.date = data$interval), na.rm=TRUE)
+mean_interval <-aggregate(x=data$steps, FUN=mean, by=list(group.date = data$interval), na.rm=TRUE)
+```
 
-## What is the average daily activity pattern?
+Time series plot by interval
+```{r part2b, echo=TRUE}
+plot(mean_interval$group.date, mean_interval$x, type = "l")
+title(main = "Mean Steps by 5-minute interval throughout day")
+```
+The average maximum number of steps is at interval 825 and the max steps is:
+```{r part2c, echo=TRUE}
+print(max(mean_interval$x))
+```
 
+The daily average number of steps is:
+```{r part2extra, echo=TRUE}
+daily_mean <- sum(mean_interval$x)
+```
 
+## Part 3. Imputing missing values 
+Calculate and report the total number of missing values in the dataset:
+```{r part3, echo=TRUE}
+count_nas <- aggregate(x=data$steps, function(x) {sum(is.na(x))}, by=list(Group.date = data$date))
+print(sum(count_nas$x))
+```
+Fill in all the missing values in the dataset (I split the daily average into each interval):
+```{r part3a1, echo=TRUE}
+data2 <- data
+data2$impute <- data$steps
+data2$impute[is.na(data2$impute)] <- daily_mean/length(mean_interval$x)
+```
 
-## Imputing missing values
+Create a new dataset that is equal to the original dataset (new dataset = data2):
+```{r part3b, echo=TRUE}
+total_impute <- aggregate(x=data2$impute, FUN=sum, by=list(Group.date = data$date))
+```
+Histogram:
+```{r part3c, echo=TRUE}
+plot(total_impute$Group.date, total_impute$x, type = "h") 
+title(main = "Histogram of steps by Day - Imputed")
+```
+Mean and Median steps with imputed data:
+```{r part3d, echo=TRUE}
+mean_steps_imp <- mean(total_impute$x)
+median_steps_imp <- median(total_impute$x)
+print(mean_steps_imp)
+print(median_steps_imp)
+```
 
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+## Part 4. Are there differences in activity patterns between weekdays and weekends? 
+Create a new factor
+```{r part4, echo=TRUE}
+dataDoW <- weekdays(data2$date)
+weekdays <- c('Monday', 'Tuesday', 'Wednesday', 'Thursday','Friday')
+data2$WDay <- factor((weekdays(data$date) %in% weekdays), levels = c(TRUE, FALSE), labels= c('weekday', 'weekend'))
+```
+Finishing defining weekday vs weekend
+```{r part4a, echo=TRUE}
+data2$weekday = ifelse(data2$WDay == "weekday", 1,0)
+data2$weekend = ifelse(data2$WDay == "weekend", 1,0)
+```
+Adding information to dataset:
+```{r part4a2, echo=TRUE}
+data2$wkdy_steps = data2$impute*data2$weekday
+data2$wked_steps = data2$impute*data2$weekend
+```
+Combining information
+```{r part4b, echo=TRUE}
+interval_wkday <- aggregate(x=data2$wkdy_steps, FUN=sum, by=list(group.date = data2$interval))
+interval_wkend <-aggregate(x=data2$wked_steps, FUN=sum, by=list(group.date = data2$interval))
+```
+Remove 0 out of average from weekend/weekday:
+```{r part4b2, echo=TRUE}
+interval_wkd <- interval_wkday$x/(sum(data2$weekday)/288)
+interval_wke <- interval_wkend$x/(sum(data2$weekend)/288)
+```
+Panel Plot
+```{r part4bc, echo=TRUE}
+par(mfrow=c(2,1))
+plot(interval_wkday$group.date, interval_wkd, type = "l", ylim = c(0,200), xlab = "interval", ylab = "Weekday")
+title("Mean Steps by 5-min interval Weekday vs Weekend")
+plot(interval_wkday$group.date, interval_wke, type = "l", ylim=c(0,200), xlab="interval", ylab = "Weekend")
+```       
+```{r}
+```
+The End
+---
